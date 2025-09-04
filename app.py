@@ -31,12 +31,6 @@ AES_IV = b'6oyZDr22E3ychjM%'
 KEY_LIMIT = 150
 token_tracker = defaultdict(lambda: [0, time.time()])  # token: [count, last_reset_time]
 
-
-
-
-# ====== Flask Route ======
-
-
 def get_today_midnight_timestamp():
     now = datetime.now()
     midnight = datetime(now.year, now.month, now.day)
@@ -566,10 +560,10 @@ def decode_protobuf(binary):
 def handle_requests():
     uid = request.args.get("uid")
     server_name = request.args.get("server_name", "").upper()
-    #key = request.args.get("key")
+    key = request.args.get("key")
 
-   # if key != "TBO":
-        #return jsonify({"error": "Invalid or missing API key 🔑"}), 403
+    if key != "TBO":
+        return jsonify({"error": "Invalid or missing API key 🔑"}), 403
 
     if not uid or not server_name:
         return jsonify({"error": "UID and server_name are required"}), 400
@@ -639,52 +633,6 @@ def handle_requests():
     result = process_request()
     return jsonify(result)
 
-import base64
-import json
-import requests
-import time
-from flask import Flask, jsonify
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-
-# ====== GitHub Config ======
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")   # <-
-USERNAME = "Hari8878"
-REPO = "Like1"
-GITHUB_FILE = "token_ind.json"      # file path in repo
-GITHUB_BRANCH = "main"              # or "master" if your repo uses it
-# ============================
-
-def update_github_file(content: str):
-    """Update (or create) a file in the GitHub repo with given content"""
-    url = f"https://api.github.com/repos/{USERNAME}/{REPO}/contents/{GITHUB_FILE}"
-
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-
-    # Step 1: Check if file exists to get SHA
-    r = requests.get(url, headers=headers, params={"ref": GITHUB_BRANCH})
-    sha = r.json().get("sha") if r.status_code == 200 else None
-
-    # Step 2: Prepare data
-    data = {
-        "message": "Update token_ind.json from /jwt",
-        "content": base64.b64encode(content.encode()).decode(),
-        "branch": GITHUB_BRANCH
-    }
-    if sha:
-        data["sha"] = sha  # Required for updating existing file
-
-    # Step 3: Push update
-    res = requests.put(url, headers=headers, json=data)
-    if res.status_code in [200, 201]:
-        print("✅ token_ind.json pushed to GitHub")
-    else:
-        print("⚠️ GitHub push failed:", res.status_code, res.text)
-
-
 @app.route('/jwt', methods=['GET'])
 def handle_requests2():
     start_time = time.time()
@@ -694,7 +642,7 @@ def handle_requests2():
         with open("backup.json", "r") as f:
             user_data = json.load(f)
 
-        max_workers = 20
+        max_workers = 20  # Adjust as needed
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(process_token_entry, entry) for entry in user_data]
             for future in as_completed(futures):
@@ -706,10 +654,6 @@ def handle_requests2():
                     })
 
         if token_results:
-            # Push directly to GitHub
-            update_github_file(json.dumps(token_results, indent=2))
-
-            # Also save locally
             with open("token_ind.json", "w") as outfile:
                 json.dump(token_results, outfile, indent=2)
         else:
@@ -723,7 +667,6 @@ def handle_requests2():
     end_time = time.time()
     print(f"\n⏳ Completed in {end_time - start_time:.2f} seconds.")
     return jsonify(token_results)
-
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
