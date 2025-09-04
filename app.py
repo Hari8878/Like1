@@ -648,7 +648,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # ====== GitHub Config ======
-GITHUB_TOKEN = "ghp3Bd5WiL1ExQ1a"   # Your PAT (classic)
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")   # <-
 USERNAME = "Hari8878"
 REPO = "Like1"
 GITHUB_FILE = "token_ind.json"      # file path in repo
